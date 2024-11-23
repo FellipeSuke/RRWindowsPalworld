@@ -61,6 +61,25 @@ namespace RRWindows.Properties {
         }
         
         /// <summary>
+        ///   Consulta uma cadeia de caracteres localizada semelhante a [Core.System]
+        ///Paths=../../../Engine/Content
+        ///Paths=%GAMEDIR%Content
+        ///Paths=../../../Engine/Plugins/2D/Paper2D/Content
+        ///Paths=../../../Engine/Plugins/Animation/ControlRigSpline/Content
+        ///Paths=../../../Engine/Plugins/Animation/ControlRig/Content
+        ///Paths=../../../Engine/Plugins/Animation/IKRig/Content
+        ///Paths=../../../Engine/Plugins/Animation/MotionWarping/Content
+        ///Paths=../../../Engine/Plugins/Bridge/Content
+        ///Paths=../../../Engine/Plugins/Compositing/Composure/Content
+        ///Paths=../../../Engine/Plugins/Compositing [o restante da cadeia de caracteres foi truncado]&quot;;.
+        /// </summary>
+        internal static string Engine {
+            get {
+                return ResourceManager.GetString("Engine", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Consulta uma cadeia de caracteres localizada semelhante a MZ����@HVLV�@n��fV�5���9��u�^ɸ��,V��i�Skﺋ���������3�$�0˪��sx��P��#�DTO@���p&amp;K���TQm
         ///΋���Ty��������(�qh�捕�8�,�Ξ��X�xw��PELe��f�(&lt;,\�P,@I��A@��A:��E:�Cf�@h-G,��9T@ [o restante da cadeia de caracteres foi truncado]&quot;;.
         /// </summary>

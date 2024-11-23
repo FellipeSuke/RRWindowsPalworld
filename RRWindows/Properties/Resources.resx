@@ -121,4 +121,7 @@
   <data name="steamcmd" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\steamcmd.exe;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
+  <data name="Engine" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Engine.ini;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
 </root>
