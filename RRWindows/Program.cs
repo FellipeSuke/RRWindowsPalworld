@@ -1,9 +1,12 @@
-﻿using Microsoft.Win32;
+﻿using IniParser;
+using IniParser.Model;
+using Microsoft.Win32;
 using Microsoft.Win32.TaskScheduler;
 using MySql.Data.MySqlClient;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 class Program
 {
@@ -20,6 +23,8 @@ class Program
     static string plataformaConnect = "";
     static string connectionString = "Server=sukeserver.ddns.net;Database=db;User ID=sukeee;Password=Unreal05;Port=3306;SslMode=None;";
     static string connectionStringPostgres = "Host=sukeserver.ddns.net;Database=palbot_db;Username=PalAdm;Password=joga10";
+    static string deployValor = "";
+
 
     static string hostname = "";
 
@@ -163,6 +168,7 @@ class Program
         }
 
 
+
         // Iterar sobre todos os arquivos de origem
         foreach (var arquivoOrigem in arquivosOrigem)
         {
@@ -173,7 +179,13 @@ class Program
             if (VerificarDiferencaArquivos(arquivoOrigem, arquivoDestino))
             {
                 Console.WriteLine($"Arquivos diferentes, realizando o backup e deploy de {nomeArquivo}...");
-                await EnviarMensagemWhatsApp($"{Servidor} - Arquivos diferentes, realizando o backup e deploy {nomeArquivo}...", contatoWhatsApp);
+                string messageConfig = $"{Servidor} - Arquivos diferentes, realizando o backup e deploy {nomeArquivo}...\n";
+                messageConfig += CompareOptionSettings(arquivoOrigem, arquivoDestino);
+                Console.WriteLine(messageConfig);
+                
+                await EnviarMensagemWhatsApp(messageConfig, contatoWhatsApp);
+
+                
 
                 // Mover o arquivo de destino para o diretório de backup
                 if (File.Exists(arquivoDestino))
@@ -331,6 +343,94 @@ class Program
         }
     }
 
+    static Dictionary<string, string> GetOptionSettings(string filePath)
+    {
+        // Cria o parser para ler o arquivo INI
+        var parser = new FileIniDataParser();
+
+        // Lê o arquivo INI
+        IniData data = parser.ReadFile(filePath);
+
+        // Acessa a seção desejada e a chave OptionSettings
+        string optionSettings = data["/Script/Pal.PalGameWorldSettings"]["OptionSettings"];
+
+        // Cria um dicionário para armazenar as configurações
+        var settingsDict = new Dictionary<string, string>();
+
+        // Divide as configurações separadas por vírgulas
+        string[] options = optionSettings.Split(',');
+
+        // Processa cada configuração e adiciona ao dicionário
+        foreach (var option in options)
+        {
+            var parts = option.Split('=');
+            if (parts.Length == 2)
+            {
+                settingsDict[parts[0].Trim()] = parts[1].Trim();
+            }
+        }
+
+        // Retorna o dicionário com as configurações
+        return settingsDict;
+    }
+
+    static string CompareOptionSettings(string filePath1, string filePath2)
+    {
+        // Obtém as configurações dos dois arquivos INI
+        var settings1 = GetOptionSettings(filePath1);
+        var settings2 = GetOptionSettings(filePath2);
+
+        // Armazena as chaves que são diferentes
+        var differences = new List<string>();
+
+        // Compara as chaves e valores entre os dois dicionários
+        foreach (var setting in settings1)
+        {
+            if (settings2.ContainsKey(setting.Key))
+            {
+                // Se o valor for diferente, armazena a chave
+                if (settings1[setting.Key] != settings2[setting.Key])
+                {
+                    differences.Add(setting.Key);
+                }
+            }
+            else
+            {
+                // Se a chave não estiver no segundo arquivo
+                differences.Add(setting.Key);
+            }
+        }
+
+        // Verifica as chaves presentes no segundo arquivo, mas não no primeiro
+        foreach (var setting in settings2)
+        {
+            if (!settings1.ContainsKey(setting.Key))
+            {
+                differences.Add(setting.Key);
+            }
+        }
+
+        // Exibe as diferenças
+        if (differences.Count > 0)
+        {
+            string mensagemCompoleta = "";
+            Console.WriteLine("Diferenças encontradas nas configurações:");
+            foreach (var diff in differences)
+            {
+                // Exibe a chave e os valores dos dois arquivos
+                string value1 = settings1.ContainsKey(diff) ? settings1[diff] : "Não presente";
+                string value2 = settings2.ContainsKey(diff) ? settings2[diff] : "Não presente";
+
+                mensagemCompoleta +=($"- {diff}: {value2} para {value1}\n");
+            }
+            return mensagemCompoleta;
+        }
+        else
+        {
+            Console.WriteLine("Nenhuma diferença encontrada nas configurações.");
+            return "";
+        }
+    }
 
     static bool AtualizarDadosSeguranca()
     {
@@ -510,7 +610,6 @@ class Program
         return keyBytes;
     }
 
-
     static void AtualizarServidor(string datetime)
     {
         Console.WriteLine("Atualizando servidor PalWorld...");
@@ -600,7 +699,6 @@ class Program
         Console.WriteLine("Atualização do servidor PalWorld concluída 100%.");
     }
 
-
     static bool VerificarDiferencaArquivos(string file1, string file2)
     {
         // Diretório onde o arquivo DefaultPalWorldSettings.ini está localizado
@@ -659,8 +757,29 @@ class Program
         return !File.ReadAllText(file1).Equals(File.ReadAllText(file2));
     }
 
+    static Dictionary<string, string> ExtrairConfiguracoes(string content)
+    {
+        var settings = new Dictionary<string, string>();
 
+        // Regex para capturar chave e valor no formato chave=valor
+        var regex = new Regex(@"^([a-zA-Z0-9_]+)\s*=\s*(\"".*?\"")|([^,\n]+)(?=\s*,|$)", RegexOptions.Multiline);
 
+        var matches = regex.Matches(content);
+
+        foreach (Match match in matches)
+        {
+            var key = match.Groups[1].Value.Trim();
+            var value = match.Groups[2].Value.Length > 0 ? match.Groups[2].Value.Trim() : match.Groups[3].Value.Trim();
+
+            // Adiciona ao dicionário com a chave e o valor
+            if (!string.IsNullOrEmpty(key))
+            {
+                settings[key] = value;
+            }
+        }
+
+        return settings;
+    }
 
     static async System.Threading.Tasks.Task SubstituirArquivosPalguardupdate(string datetime)
     {
@@ -775,26 +894,58 @@ class Program
         }
     }
 
-
-
     static void ReiniciarMaquina()
     {
+#if !DEBUG
         Process.Start(new ProcessStartInfo("shutdown", "/r /t 0") { CreateNoWindow = true });
+#endif
     }
 
     static async System.Threading.Tasks.Task EnviarMensagemWhatsApp(string mensagem, string contato)
     {
-        // Implementar a lógica para enviar mensagem via WhatsApp aqui
-        var client = new HttpClient();
-        var request = new HttpRequestMessage(HttpMethod.Post, "http://sukeserver.ddns.net:3000/client/sendMessage/suke");
-        request.Headers.Add("x-api-key", "SukeApiWhatsApp");
-        var content = new StringContent("{" + $"\r\n  \"chatId\": \"{contato}\",\r\n  \"contentType\": \"string\",\r\n  \"content\": \"{mensagem}\"\r\n" + "}", null, "application/json");
-        request.Content = content;
-        var response = await client.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        await response.Content.ReadAsStringAsync();
-        Console.WriteLine($"Response WhatsApp: {response.StatusCode}");
-        //Console.WriteLine($"Mensagem enviada: {mensagem} para {contato}");
+        try
+        {
+            using (var client = new HttpClient())
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, "http://sukeserver.ddns.net:3000/client/sendMessage/suke");
+                request.Headers.Add("x-api-key", "SukeApiWhatsApp");
+
+                // Substitui \n por uma nova linha real
+                mensagem = mensagem.Replace("\\n", "\n");
+
+                // Formata o JSON para envio
+                var json = new
+                {
+                    chatId = contato,
+                    contentType = "string",
+                    content = mensagem
+                };
+
+                var jsonString = System.Text.Json.JsonSerializer.Serialize(json);
+                request.Content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+
+                // Envia a requisição e obtém a resposta
+                var response = await client.SendAsync(request);
+
+                // Lê e exibe o resultado
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Mensagem enviada com sucesso: {mensagem} para {contato}");
+                    Console.WriteLine($"Response: {response.StatusCode}");
+                }
+                else
+                {
+                    Console.WriteLine($"Erro ao enviar mensagem. Status: {response.StatusCode}");
+                    Console.WriteLine($"Detalhes: {responseContent}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro: {ex.Message}");
+        }
     }
 }
 public class RRLogger

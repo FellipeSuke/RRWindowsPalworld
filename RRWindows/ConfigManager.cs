@@ -90,6 +90,7 @@ public class ConfigManager
 
         sb.Length--; // Remove a última vírgula
         sb.AppendLine(")");
+        sb.AppendLine();
 
         return sb.ToString();
     }
